@@ -298,40 +298,51 @@ async function refreshDropdowns() {
 }
 
 async function createJob() {
-  const title =
-    document.getElementById("jobTitle").value.trim();
-
-  const raw_text =
-    document.getElementById("jobText").value.trim();
+  const title = document.getElementById("jobTitle").value.trim();
+  const raw_text = document.getElementById("jobText").value.trim();
 
   if (!title || !raw_text) {
     alert("Please fill in both the title and description.");
     return;
   }
 
-  const res = await fetch(`${API_BASE}/job-descriptions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      title,
-      raw_text
-    }),
-  });
+  document.getElementById("jobStatus").innerText = "Saving...";
 
-  if (res.ok) {
+  try {
+    const res = await fetch(`${API_BASE}/job-descriptions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        raw_text
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to save job.");
+    }
+
+    const job = await res.json();
+
+    const jobOption =
+      `<option value="${job.id}" selected>${job.title}</option>`;
+
+    document.getElementById("jobSelect").innerHTML = jobOption;
+    document.getElementById("shortlistJob").innerHTML = jobOption;
+
     document.getElementById("jobStatus").innerText = "Saved.";
-    await refreshDropdowns();
-  } else {
+
+  } catch (error) {
+    console.error(error);
     document.getElementById("jobStatus").innerText =
       "Error saving job description.";
   }
 }
 
 async function uploadResume() {
-  const fileInput =
-    document.getElementById("resumeFile");
+  const fileInput = document.getElementById("resumeFile");
 
   if (!fileInput.files.length) {
     alert("Choose a PDF resume first.");
@@ -344,19 +355,32 @@ async function uploadResume() {
   document.getElementById("uploadStatus").innerText =
     "Parsing...";
 
-  const res = await fetch(
-    `${API_BASE}/candidates/upload`,
-    {
-      method: "POST",
-      body: formData
-    }
-  );
+  try {
+    const res = await fetch(
+      `${API_BASE}/candidates/upload`,
+      {
+        method: "POST",
+        body: formData
+      }
+    );
 
-  if (res.ok) {
+    if (!res.ok) {
+      throw new Error("Upload failed.");
+    }
+
+    const candidate = await res.json();
+
+    const candidateOption =
+      `<option value="${candidate.id}" selected>${candidate.name || candidate.filename}</option>`;
+
+    document.getElementById("candidateSelect").innerHTML =
+      candidateOption;
+
     document.getElementById("uploadStatus").innerText =
       "Resume parsed and stored.";
-    await refreshDropdowns();
-  } else {
+
+  } catch (error) {
+    console.error(error);
     document.getElementById("uploadStatus").innerText =
       "Error uploading resume.";
   }
@@ -454,7 +478,14 @@ async function loadShortlist() {
   }
 }
 
-refreshDropdowns();
+document.getElementById("candidateSelect").innerHTML =
+  '<option value="">Select candidate</option>';
+
+document.getElementById("jobSelect").innerHTML =
+  '<option value="">Select job</option>';
+
+document.getElementById("shortlistJob").innerHTML =
+  '<option value="">Select job</option>';
 </script>
 
 </body>
