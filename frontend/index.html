@@ -15,9 +15,7 @@
     --muted: #6b6f72;
   }
 
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   body {
     margin: 0;
@@ -73,9 +71,9 @@
     color: var(--muted);
   }
 
-  input[type="text"],
+  input[type=text],
   textarea,
-  input[type="number"],
+  input[type=number],
   select {
     width: 100%;
     padding: 0.6rem;
@@ -116,61 +114,27 @@
     min-width: 220px;
   }
 
-  .muted {
-    color: var(--muted);
-    font-size: 0.8rem;
-  }
-
-  .status {
-    min-height: 1.2rem;
-  }
-
-  /* Shortlist */
-  .table-wrapper {
+  table {
     width: 100%;
-    overflow-x: auto;
-    margin-top: 1rem;
-  }
-
-  #shortlistTable {
-    width: 100%;
-    min-width: 700px;
     border-collapse: collapse;
     font-size: 0.88rem;
   }
 
-  #shortlistTable th,
-  #shortlistTable td {
+  th,
+  td {
     text-align: left;
-    padding: 0.75rem 0.5rem;
+    padding: 0.5rem 0.4rem;
     border-bottom: 1px solid var(--line);
     vertical-align: top;
   }
 
-  #shortlistTable th {
+  th {
     color: var(--muted);
     font-weight: 600;
   }
 
-  #shortlistTable th:nth-child(1),
-  #shortlistTable td:nth-child(1) {
-    width: 18%;
-  }
-
-  #shortlistTable th:nth-child(2),
-  #shortlistTable td:nth-child(2) {
-    width: 10%;
-    white-space: nowrap;
-  }
-
-  #shortlistTable th:nth-child(3),
+  /* Only the justification column is allowed to wrap normally. */
   #shortlistTable td:nth-child(3) {
-    width: 72%;
-  }
-
-  .justification {
-    display: block;
-    width: 100%;
     white-space: normal;
     overflow-wrap: break-word;
     word-break: normal;
@@ -186,14 +150,9 @@
     border-radius: 999px;
   }
 
-  @media (max-width: 700px) {
-    main {
-      padding: 1rem;
-    }
-
-    .panel {
-      padding: 1rem;
-    }
+  .muted {
+    color: var(--muted);
+    font-size: 0.8rem;
   }
 </style>
 
@@ -207,8 +166,6 @@
 </header>
 
 <main>
-
-  <!-- 1. JOB DESCRIPTION -->
 
   <section class="panel">
     <h2>1. Job Description</h2>
@@ -234,12 +191,10 @@
 
 <button onclick="createJob()">Save job description</button>
 
-<p class="muted status" id="jobStatus"></p>
+<p class="muted" id="jobStatus"></p>
 ```
 
   </section>
-
-  <!-- 2. UPLOAD RESUME -->
 
   <section class="panel">
     <h2>2. Upload Resume</h2>
@@ -253,12 +208,10 @@
 
 <button onclick="uploadResume()">Upload &amp; Parse</button>
 
-<p class="muted status" id="uploadStatus"></p>
+<p class="muted" id="uploadStatus"></p>
 ```
 
   </section>
-
-  <!-- 3. RUN MATCH -->
 
   <section class="panel">
     <h2>3. Run Match</h2>
@@ -278,12 +231,10 @@
 
 <button onclick="runMatch()">Compute match score</button>
 
-<p class="muted status" id="matchStatus"></p>
+<p class="muted" id="matchStatus"></p>
 ```
 
   </section>
-
-  <!-- 4. SHORTLIST -->
 
   <section class="panel">
     <h2>4. Shortlist</h2>
@@ -298,19 +249,17 @@
 
 <button onclick="loadShortlist()">Refresh shortlist</button>
 
-<div class="table-wrapper">
-  <table id="shortlistTable">
-    <thead>
-      <tr>
-        <th>Candidate</th>
-        <th>Score</th>
-        <th>Justification</th>
-      </tr>
-    </thead>
+<table id="shortlistTable">
+  <thead>
+    <tr>
+      <th>Candidate</th>
+      <th>Score</th>
+      <th>Justification</th>
+    </tr>
+  </thead>
 
-    <tbody></tbody>
-  </table>
-</div>
+  <tbody></tbody>
+</table>
 ```
 
   </section>
@@ -320,58 +269,35 @@
 <script>
 const API_BASE = "https://smart-resume-screener-main.onrender.com";
 
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-
 async function refreshDropdowns() {
   try {
-    const [candidatesRes, jobsRes] = await Promise.all([
-      fetch(`${API_BASE}/candidates`),
-      fetch(`${API_BASE}/job-descriptions`)
+    const [candidates, jobs] = await Promise.all([
+      fetch(`${API_BASE}/candidates`).then(r => r.json()),
+      fetch(`${API_BASE}/job-descriptions`).then(r => r.json()),
     ]);
-
-    if (!candidatesRes.ok || !jobsRes.ok) {
-      throw new Error("Failed to load candidates or jobs.");
-    }
-
-    const candidates = await candidatesRes.json();
-    const jobs = await jobsRes.json();
 
     const candidateSelect =
       document.getElementById("candidateSelect");
 
     candidateSelect.innerHTML = candidates
-      .map(c => `
-        <option value="${c.id}">
-          ${escapeHtml(c.name || c.filename)}
-        </option>
-      `)
+      .map(c =>
+        `<option value="${c.id}">${c.name || c.filename}</option>`
+      )
       .join("");
 
     const jobOptions = jobs
-      .map(j => `
-        <option value="${j.id}">
-          ${escapeHtml(j.title)}
-        </option>
-      `)
+      .map(j =>
+        `<option value="${j.id}">${j.title}</option>`
+      )
       .join("");
 
     document.getElementById("jobSelect").innerHTML = jobOptions;
     document.getElementById("shortlistJob").innerHTML = jobOptions;
 
   } catch (error) {
-    console.error("Dropdown refresh failed:", error);
+    console.error("Error loading dropdowns:", error);
   }
 }
-
 
 async function createJob() {
   const title =
@@ -385,38 +311,25 @@ async function createJob() {
     return;
   }
 
-  document.getElementById("jobStatus").innerText = "Saving...";
+  const res = await fetch(`${API_BASE}/job-descriptions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      title,
+      raw_text
+    }),
+  });
 
-  try {
-    const res = await fetch(
-      `${API_BASE}/job-descriptions`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          title,
-          raw_text
-        })
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error("Failed to save job description.");
-    }
-
+  if (res.ok) {
     document.getElementById("jobStatus").innerText = "Saved.";
-
     await refreshDropdowns();
-
-  } catch (error) {
-    console.error(error);
+  } else {
     document.getElementById("jobStatus").innerText =
       "Error saving job description.";
   }
 }
-
 
 async function uploadResume() {
   const fileInput =
@@ -433,31 +346,23 @@ async function uploadResume() {
   document.getElementById("uploadStatus").innerText =
     "Parsing...";
 
-  try {
-    const res = await fetch(
-      `${API_BASE}/candidates/upload`,
-      {
-        method: "POST",
-        body: formData
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error("Resume upload failed.");
+  const res = await fetch(
+    `${API_BASE}/candidates/upload`,
+    {
+      method: "POST",
+      body: formData
     }
+  );
 
+  if (res.ok) {
     document.getElementById("uploadStatus").innerText =
       "Resume parsed and stored.";
-
     await refreshDropdowns();
-
-  } catch (error) {
-    console.error(error);
+  } else {
     document.getElementById("uploadStatus").innerText =
       "Error uploading resume.";
   }
 }
-
 
 async function runMatch() {
   const candidate_id = parseInt(
@@ -473,50 +378,46 @@ async function runMatch() {
     return;
   }
 
-  const matchStatus =
-    document.getElementById("matchStatus");
-
-  matchStatus.innerText = "Scoring with LLM...";
+  document.getElementById("matchStatus").innerText =
+    "Scoring with LLM...";
 
   try {
-    const res = await fetch(
-      `${API_BASE}/match`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          candidate_id,
-          job_id
-        })
-      }
-    );
+    const res = await fetch(`${API_BASE}/match`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        candidate_id,
+        job_id
+      }),
+    });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("Match request failed:", errorText);
-      throw new Error("Match request failed.");
+    if (res.ok) {
+      document.getElementById("matchStatus").innerText =
+        "Match computed.";
+
+      await loadShortlist();
+    } else {
+      console.error("Match failed:", await res.text());
+
+      document.getElementById("matchStatus").innerText =
+        "Error computing match.";
     }
-
-    matchStatus.innerText = "Match computed.";
-
-    await loadShortlist();
 
   } catch (error) {
     console.error(error);
-    matchStatus.innerText = "Error computing match.";
+
+    document.getElementById("matchStatus").innerText =
+      "Error computing match.";
   }
 }
-
 
 async function loadShortlist() {
   const job_id =
     document.getElementById("shortlistJob").value;
 
-  if (!job_id) {
-    return;
-  }
+  if (!job_id) return;
 
   try {
     const res = await fetch(
@@ -531,9 +432,7 @@ async function loadShortlist() {
 
     const rows = await res.json();
 
-    rows.sort(
-      (a, b) => Number(b.score) - Number(a.score)
-    );
+    rows.sort((a, b) => b.score - a.score);
 
     const tbody =
       document.querySelector("#shortlistTable tbody");
@@ -541,41 +440,21 @@ async function loadShortlist() {
     tbody.innerHTML = rows
       .map(r => `
         <tr>
-          <td>
-            ${escapeHtml(r.candidate_name || r.filename)}
-          </td>
-
+          <td>${r.candidate_name || r.filename}</td>
           <td>
             <span class="score-badge">
-              ${escapeHtml(r.score)}/10
+              ${r.score}/10
             </span>
           </td>
-
-          <td>
-            <div class="justification">
-              ${escapeHtml(r.justification)}
-            </div>
-          </td>
+          <td>${r.justification || ""}</td>
         </tr>
       `)
       .join("");
 
   } catch (error) {
-    console.error(error);
-
-    const tbody =
-      document.querySelector("#shortlistTable tbody");
-
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="3" class="muted">
-          Unable to load shortlist.
-        </td>
-      </tr>
-    `;
+    console.error("Shortlist error:", error);
   }
 }
-
 
 refreshDropdowns();
 </script>
