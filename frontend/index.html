@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smart Resume Screener</title>
+<style>
+  :root {
+    --ink: #1c2024;
+    --paper: #fafaf9;
+    --line: #e2e1de;
+    --accent: #2f5d50;
+    --accent-soft: #e7efec;
+    --muted: #6b6f72;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  header {
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    gap: 2rem;
+  }
+  .panel {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.5rem;
+  }
+  .panel h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 0 0 1rem;
+  }
+  label { display: block; font-size: 0.85rem; margin-bottom: 0.3rem; color: var(--muted); }
+  input[type=text], textarea, input[type=number], select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  button:hover { opacity: 0.9; }
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 220px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .score-badge {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+  }
+  .muted { color: var(--muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Smart Resume Screener</h1>
+  <p>Upload resumes, define a role, and get LLM-ranked candidate matches.</p>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>1. Job Description</h2>
+    <div class="row">
+      <div>
+        <label for="jobTitle">Role title</label>
+        <input type="text" id="jobTitle" placeholder="e.g. Backend Engineer">
+      </div>
+    </div>
+    <label for="jobText">Job description</label>
+    <textarea id="jobText" placeholder="Paste the full job description here..."></textarea>
+    <button onclick="createJob()">Save job description</button>
+    <p class="muted" id="jobStatus"></p>
+  </section>
+
+  <section class="panel">
+    <h2>2. Upload Resume</h2>
+    <input type="file" id="resumeFile" accept="application/pdf">
+    <button onclick="uploadResume()">Upload &amp; Parse</button>
+    <p class="muted" id="uploadStatus"></p>
+  </section>
+
+  <section class="panel">
+    <h2>3. Run Match</h2>
+    <div class="row">
+      <div>
+        <label for="candidateSelect">Candidate</label>
+        <select id="candidateSelect"></select>
+      </div>
+      <div>
+        <label for="jobSelect">Job</label>
+        <select id="jobSelect"></select>
+      </div>
+    </div>
+    <button onclick="runMatch()">Compute match score</button>
+    <p class="muted" id="matchStatus"></p>
+  </section>
+
+  <section class="panel">
+    <h2>4. Shortlist</h2>
+    <div class="row">
+      <div>
+        <label for="shortlistJob">View shortlist for job</label>
+        <select id="shortlistJob"></select>
+      </div>
+    </div>
+    <button onclick="loadShortlist()">Refresh shortlist</button>
+    <table id="shortlistTable">
+      <thead>
+        <tr><th>Candidate</th><th>Score</th><th>Justification</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+</main>
+
+<script>
+const API_BASE = "http://localhost:8000";
+
+async function refreshDropdowns() {
+  const [candidates, jobs] = await Promise.all([
+    fetch(`${API_BASE}/candidates`).then(r => r.json()),
+    fetch(`${API_BASE}/job-descriptions`).then(r => r.json()),
+  ]);
+
+  const candidateSelect = document.getElementById("candidateSelect");
+  candidateSelect.innerHTML = candidates.map(c => `<option value="${c.id}">${c.name || c.filename}</option>`).join("");
+
+  const jobOptions = jobs.map(j => `<option value="${j.id}">${j.title}</option>`).join("");
+  document.getElementById("jobSelect").innerHTML = jobOptions;
+  document.getElementById("shortlistJob").innerHTML = jobOptions;
+}
+
+async function createJob() {
+  const title = document.getElementById("jobTitle").value.trim();
+  const raw_text = document.getElementById("jobText").value.trim();
+  if (!title || !raw_text) { alert("Please fill in both the title and description."); return; }
+
+  const res = await fetch(`${API_BASE}/job-descriptions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, raw_text }),
+  });
+  if (res.ok) {
+    document.getElementById("jobStatus").innerText = "Saved.";
+    refreshDropdowns();
+  } else {
+    document.getElementById("jobStatus").innerText = "Error saving job description.";
+  }
+}
+
+async function uploadResume() {
+  const fileInput = document.getElementById("resumeFile");
+  if (!fileInput.files.length) { alert("Choose a PDF resume first."); return; }
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  document.getElementById("uploadStatus").innerText = "Parsing...";
+  const res = await fetch(`${API_BASE}/candidates/upload`, { method: "POST", body: formData });
+  if (res.ok) {
+    document.getElementById("uploadStatus").innerText = "Resume parsed and stored.";
+    refreshDropdowns();
+  } else {
+    document.getElementById("uploadStatus").innerText = "Error uploading resume.";
+  }
+}
+
+async function runMatch() {
+  const candidate_id = parseInt(document.getElementById("candidateSelect").value);
+  const job_id = parseInt(document.getElementById("jobSelect").value);
+  if (!candidate_id || !job_id) { alert("Save a job and upload a resume first."); return; }
+
+  document.getElementById("matchStatus").innerText = "Scoring with LLM...";
+  const res = await fetch(`${API_BASE}/match`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ candidate_id, job_id }),
+  });
+  if (res.ok) {
+    document.getElementById("matchStatus").innerText = "Match computed.";
+  } else {
+    document.getElementById("matchStatus").innerText = "Error computing match.";
+  }
+}
+
+async function loadShortlist() {
+  const job_id = document.getElementById("shortlistJob").value;
+  if (!job_id) return;
+  const res = await fetch(`${API_BASE}/shortlist/${job_id}`);
+  const rows = await res.json();
+  rows.sort((a, b) => b.score - a.score);
+  const tbody = document.querySelector("#shortlistTable tbody");
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.candidate_name || r.filename}</td>
+      <td><span class="score-badge">${r.score}/10</span></td>
+      <td>${r.justification}</td>
+    </tr>
+  `).join("");
+}
+
+refreshDropdowns();
+</script>
+
+</body>
+</html>
