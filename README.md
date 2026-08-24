@@ -187,8 +187,7 @@ smart-resume-screener/
 
 ## Demo Video
 
-_(Add your 2–3 min demo video link here after recording — see the
-"Recording your demo video" section in the submission notes.)_
+https://github.com/user-attachments/assets/90591007-3bb1-47d2-a4b2-31d57e974c14
 
 ## Notes / Possible Extensions
 
